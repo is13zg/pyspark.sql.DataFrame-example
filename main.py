@@ -5,13 +5,21 @@ from pyspark.sql import SparkSession
 
 
 def get_product_category_pairs(
-        products: DataFrame,
-        categories: DataFrame,
-        product_categories: DataFrame
+        products: DataFrame, categories: DataFrame, product_categories: DataFrame
 ) -> DataFrame:
-    return products.alias("p").join(product_categories.alias("pc"), F.col("p.id") == F.col("pc.product_id"),
-                                    "left").join(categories.alias("c"), F.col("c.id") == F.col("pc.category_id"),
-                                                 "left").select(F.col("p.name"), F.col("c.name").orderBy("p.name"))
+    p = products.alias("p")
+    pc = product_categories.alias("pc")
+    c = categories.alias("c")
+
+    return (
+        p.join(pc, F.col("p.id") == F.col("pc.product_id"), "left")
+        .join(c, F.col("c.id") == F.col("pc.category_id"), "left")
+        .select(
+            F.col("p.name").alias("product_name"),
+            F.col("c.name").alias("category_name"),
+        )
+        .orderBy(F.col("product_name"))
+    )
 
 
 def main():
@@ -31,18 +39,15 @@ def main():
         (2, 2),
     ]
 
-    spark = SparkSession.builder \
-        .appName("ProductsCategories") \
-        .master("local[*]") \
-        .getOrCreate()
+    spark = SparkSession.builder.appName("ProductsCategories").master("local[*]").getOrCreate()
 
     products = spark.createDataFrame(products_data, ["id", "name"])
     categories = spark.createDataFrame(categories_data, ["id", "name"])
     product_categories = spark.createDataFrame(product_categories_data, ["product_id", "category_id"])
 
-    products.show()
-    categories.show()
-    product_categories.show()
+    # products.show()
+    # categories.show()
+    # product_categories.show()
 
     res = get_product_category_pairs(products, categories, product_categories)
     res.show()
